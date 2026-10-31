@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "547502969918",
+    "project_id": "gen-lang-client-0870239650",
+    "storage_bucket": "gen-lang-client-0870239650.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:547502969918:android:cd259c049b890ba1d0ad6f",
+        "android_client_info": {
+          "package_name": "com.aistudio.aljasoos.spygame"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "547502969918-kkdbbsgaqo7ljf58173k4sikovope5h1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aistudio.aljasoos.spygame",
+            "certificate_hash": "b081d0e140797799eac98d5e251b13da5d7ffe5e"
+          }
+        },
+        {
+          "client_id": "547502969918-2n8p42e175jrvlnk2ooemrlufqkpu6co.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvOXXyw08WLtW8VbYH4l0nXPzwRKixylQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "547502969918-2n8p42e175jrvlnk2ooemrlufqkpu6co.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
