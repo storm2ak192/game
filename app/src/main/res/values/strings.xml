@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">الجاسوس</string>
+    <string name="game_subtitle">لعبة الاستنتاج، الخداع الاجتماعي، والتحقيق الجماعي</string>
+    <string name="spy_secret_card_phrase">أنت الجاسوس إعمل نفسك تعرف الكلمة</string>
+    <string name="play_offline_button">اللعب أوفلاين (تمرير الهاتف)</string>
+    <string name="play_online_button">اللعب أونلاين (غرف صوتية مباشرة)</string>
+    <string name="how_to_play_button">طريقة اللعب</string>
+    <string name="settings_button">الإعدادات</string>
+    <string name="create_room_label">إنشاء غرفة</string>
+    <string name="join_room_label">الانضمام إلى غرفة</string>
+    <string name="category_food">الأكل</string>
+    <string name="category_home">المنزل</string>
+    <string name="category_tools">الأدوات</string>
+    <string name="category_countries">الدول</string>
+    <string name="category_random">عشوائي</string>
+</resources>

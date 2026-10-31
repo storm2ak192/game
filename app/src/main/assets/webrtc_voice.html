@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Al-Jasoos WebRTC Voice Mesh</title>
+</head>
+<body style="margin:0;background:transparent;">
+<div id="audioContainer"></div>
+<script>
+(function() {
+  const ICE_SERVERS = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" }
+  ];
+
+  let localUid = "";
+  let localStream = null;
+  let isMuted = false;
+  const peers = {}; // peerUid -> RTCPeerConnection
+  const pendingCandidates = {}; // peerUid -> RTCIceCandidateInit[]
+
+  function logBridge(status, detail) {
+    if (window.VoiceAndroidBridge && window.VoiceAndroidBridge.onVoiceStateChanged) {
+      window.VoiceAndroidBridge.onVoiceStateChanged(status, detail || "");
+    }
+  }
+
+  function sendSignalToPeer(targetUid, type, payloadObj) {
+    if (window.VoiceAndroidBridge && window.VoiceAndroidBridge.sendSignal) {
+      window.VoiceAndroidBridge.sendSignal(targetUid, type, JSON.stringify(payloadObj));
+    }
+  }
+
+  async function ensureLocalAudio() {
+    if (localStream) return localStream;
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        },
+        video: false
+      });
+      applyMuteToTracks();
+      logBridge("MIC_READY", "Microphone active");
+      return localStream;
+    } catch (err) {
+      logBridge("MIC_ERROR", err && err.message ? err.message : "Microphone access failed");
+      return null;
+    }
+  }
+
+  function applyMuteToTracks() {
+    if (!localStream) return;
+    localStream.getAudioTracks().forEach(function(track) {
+      track.enabled = !isMuted;
+    });
+  }
+
+  function getOrCreatePeer(peerUid) {
+    if (peers[peerUid]) return peers[peerUid];
+
+    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    peers[peerUid] = pc;
+
+    if (localStream) {
+      localStream.getTracks().forEach(function(track) {
+        pc.addTrack(track, localStream);
+      });
+    }
+
+    pc.onicecandidate = function(event) {
+      if (event.candidate) {
+        sendSignalToPeer(peerUid, "ICE", event.candidate);
+      }
+    };
+
+    pc.ontrack = function(event) {
+      let audioEl = document.getElementById("remote_audio_" + peerUid);
+      if (!audioEl) {
+        audioEl = document.createElement("audio");
+        audioEl.id = "remote_audio_" + peerUid;
+        audioEl.autoplay = true;
+        audioEl.playsInline = true;
+        document.getElementById("audioContainer").appendChild(audioEl);
+      }
+      if (event.streams && event.streams[0]) {
+        audioEl.srcObject = event.streams[0];
+        audioEl.play().catch(function() {});
+      }
+    };
+
+    pc.onconnectionstatechange = function() {
+      logBridge("PEER_" + pc.connectionState.toUpperCase(), peerUid);
+      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        // Attempt ICE restart if deterministic initiator
+        if (localUid < peerUid && pc.restartIce) {
+          pc.restartIce();
+        }
+      }
+    };
+
+    return pc;
+  }
+
+  window.VoiceEngine = {
+    initSession: async function(myUid, initialMuted) {
+      localUid = myUid;
+      isMuted = !!initialMuted;
+      await ensureLocalAudio();
+    },
+
+    setMuted: function(muted) {
+      isMuted = !!muted;
+      applyMuteToTracks();
+      logBridge(isMuted ? "MUTED" : "UNMUTED", localUid);
+    },
+
+    syncRoomMembers: async function(memberUidsJson) {
+      let members = [];
+      try {
+        members = JSON.parse(memberUidsJson);
+      } catch (e) {
+        return;
+      }
+
+      // Close peers that left the room
+      Object.keys(peers).forEach(function(existingPeer) {
+        if (members.indexOf(existingPeer) === -1) {
+          peers[existingPeer].close();
+          delete peers[existingPeer];
+          const el = document.getElementById("remote_audio_" + existingPeer);
+          if (el) el.remove();
+        }
+      });
+
+      await ensureLocalAudio();
+
+      // Deterministically initiate offer if localUid < peerUid
+      for (let i = 0; i < members.length; i++) {
+        const peerUid = members[i];
+        if (!peerUid || peerUid === localUid) continue;
+        if (!peers[peerUid] && localUid < peerUid) {
+          const pc = getOrCreatePeer(peerUid);
+          try {
+            const offer = await pc.createOffer({ offerToReceiveAudio: true });
+            await pc.setLocalDescription(offer);
+            sendSignalToPeer(peerUid, "OFFER", offer);
+          } catch (e) {
+            logBridge("SIGNAL_ERR", e.message || "");
+          }
+        }
+      }
+    },
+
+    handleIncomingSignal: async function(senderUid, type, payloadStr) {
+      if (!senderUid || senderUid === localUid) return;
+      let data = null;
+      try {
+        data = JSON.parse(payloadStr);
+      } catch (e) {
+        return;
+      }
+
+      await ensureLocalAudio();
+      const pc = getOrCreatePeer(senderUid);
+
+      try {
+        if (type === "OFFER") {
+          await pc.setRemoteDescription(new RTCSessionDescription(data));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          sendSignalToPeer(senderUid, "ANSWER", answer);
+
+          if (pendingCandidates[senderUid]) {
+            for (const c of pendingCandidates[senderUid]) {
+              await pc.addIceCandidate(new RTCIceCandidate(c));
+            }
+            delete pendingCandidates[senderUid];
+          }
+        } else if (type === "ANSWER") {
+          if (pc.signalingState === "have-local-offer") {
+            await pc.setRemoteDescription(new RTCSessionDescription(data));
+            if (pendingCandidates[senderUid]) {
+              for (const c of pendingCandidates[senderUid]) {
+                await pc.addIceCandidate(new RTCIceCandidate(c));
+              }
+              delete pendingCandidates[senderUid];
+            }
+          }
+        } else if (type === "ICE") {
+          if (pc.remoteDescription && pc.remoteDescription.type) {
+            await pc.addIceCandidate(new RTCIceCandidate(data));
+          } else {
+            if (!pendingCandidates[senderUid]) pendingCandidates[senderUid] = [];
+            pendingCandidates[senderUid].push(data);
+          }
+        }
+      } catch (err) {
+        logBridge("SIGNAL_HANDLE_ERR", err && err.message ? err.message : "");
+      }
+    },
+
+    shutdown: function() {
+      Object.keys(peers).forEach(function(peerUid) {
+        try { peers[peerUid].close(); } catch (e) {}
+        delete peers[peerUid];
+      });
+      if (localStream) {
+        localStream.getTracks().forEach(function(track) {
+          try { track.stop(); } catch (e) {}
+        });
+        localStream = null;
+      }
+      const container = document.getElementById("audioContainer");
+      if (container) container.innerHTML = "";
+      logBridge("SHUTDOWN", "");
+    }
+  };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "الجاسوس",
+  "description": "لعبة جماعية عربية للاستنتاج والخداع الاجتماعي أوفلاين وأونلاين مع غرف صوتية مباشرة",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

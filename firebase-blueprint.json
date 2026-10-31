@@ -1,0 +1,489 @@
+{
+  "entities": {
+    "Room": {
+      "title": "Room",
+      "description": "Public online game room state shared across room members without exposing secret words or roles during secret phases.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Unique 6-character alphanumeric room invite code."
+        },
+        "hostId": {
+          "type": "string",
+          "description": "Current authoritative host UID."
+        },
+        "creatorId": {
+          "type": "string",
+          "description": "Original creator UID."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["LOBBY", "ROLE_REVEAL", "QUESTIONS", "VOTING", "SPY_GUESS", "ROUND_RESULTS", "MATCH_OVER"],
+          "description": "Current synchronized phase of the match."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["FOOD", "HOME", "TOOLS", "COUNTRIES", "RANDOM"],
+          "description": "Selected secret word category."
+        },
+        "spyCount": {
+          "type": "integer",
+          "description": "Number of spies configured for the round (1, 2, or 3)."
+        },
+        "winScore": {
+          "type": "integer",
+          "description": "Target score required to win the match."
+        },
+        "roundNumber": {
+          "type": "integer",
+          "description": "Current round counter."
+        },
+        "questionCount": {
+          "type": "integer",
+          "description": "Number of questions asked in the current round."
+        },
+        "currentAskerId": {
+          "type": "string",
+          "description": "UID of the player currently asking the question."
+        },
+        "currentAnswererId": {
+          "type": "string",
+          "description": "UID of the player currently answering the question."
+        },
+        "turnEventId": {
+          "type": "string",
+          "description": "Unique event identifier preventing duplicate turn transitions."
+        },
+        "memberUids": {
+          "type": "array",
+          "description": "Bounded list of current room member UIDs (max 12)."
+        },
+        "maxPlayers": {
+          "type": "integer",
+          "description": "Maximum allowed players in the room (12)."
+        },
+        "isClosed": {
+          "type": "boolean",
+          "description": "Whether the room is closed to new players."
+        },
+        "revealedWord": {
+          "type": "string",
+          "description": "Secret word populated ONLY after secret phases end (ROUND_RESULTS or MATCH_OVER)."
+        },
+        "revealedSpyIds": {
+          "type": "array",
+          "description": "List of spy UIDs populated ONLY after secret phases end."
+        },
+        "winnerIds": {
+          "type": "array",
+          "description": "List of winning player UIDs when status reaches MATCH_OVER."
+        },
+        "roundVotesSummary": {
+          "type": "object",
+          "description": "Map of voterId to list of selectedSuspectIds populated at ROUND_RESULTS."
+        },
+        "roundGuessesSummary": {
+          "type": "object",
+          "description": "Map of spyId to guessedWord populated at ROUND_RESULTS."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "code",
+        "hostId",
+        "creatorId",
+        "status",
+        "category",
+        "spyCount",
+        "winScore",
+        "roundNumber",
+        "questionCount",
+        "memberUids",
+        "maxPlayers",
+        "isClosed",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "RoomPlayer": {
+      "title": "RoomPlayer",
+      "description": "Synchronized player profile, score, ready status, vote/guess completion flags, mic mute state, and presence inside a room.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated UID of the player."
+        },
+        "roomCode": {
+          "type": "string",
+          "description": "Parent room code."
+        },
+        "memberUids": {
+          "type": "array",
+          "description": "Denormalized room member UIDs for secure O(1) list queries."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name chosen by the player."
+        },
+        "avatarIndex": {
+          "type": "integer",
+          "description": "Selected built-in avatar index."
+        },
+        "totalScore": {
+          "type": "integer",
+          "description": "Cumulative match score."
+        },
+        "lastRoundScore": {
+          "type": "integer",
+          "description": "Points earned in the latest round."
+        },
+        "hasConfirmedCard": {
+          "type": "boolean",
+          "description": "True once the player taps 'تم' after viewing their secret role card."
+        },
+        "hasVoted": {
+          "type": "boolean",
+          "description": "True once the player submits their vote ballot in the current round."
+        },
+        "hasGuessedWord": {
+          "type": "boolean",
+          "description": "True once a spy submits their word guess in the current round."
+        },
+        "isMicMuted": {
+          "type": "boolean",
+          "description": "Live microphone mute status controlled exclusively by this player."
+        },
+        "isConnected": {
+          "type": "boolean",
+          "description": "Connection status indicator."
+        },
+        "joinedOrder": {
+          "type": "integer",
+          "description": "Monotonic join index used for deterministic host migration."
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Heartbeat timestamp via FieldValue.serverTimestamp()."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Join timestamp via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "roomCode",
+        "memberUids",
+        "name",
+        "avatarIndex",
+        "totalScore",
+        "lastRoundScore",
+        "hasConfirmedCard",
+        "hasVoted",
+        "hasGuessedWord",
+        "isMicMuted",
+        "isConnected",
+        "joinedOrder",
+        "lastSeenAt",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PlayerSecret": {
+      "title": "PlayerSecret",
+      "description": "Strictly isolated per-player secret role and word payload readable ONLY by the target player.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Target player UID who alone may read this document."
+        },
+        "hostId": {
+          "type": "string",
+          "description": "Host UID who distributed the round secrets."
+        },
+        "roundNumber": {
+          "type": "integer",
+          "description": "Round number this secret belongs to."
+        },
+        "isSpy": {
+          "type": "boolean",
+          "description": "Whether this player is a spy."
+        },
+        "secretWord": {
+          "type": "string",
+          "description": "The secret word for normal players, or empty string for spies."
+        },
+        "spyOptions": {
+          "type": "array",
+          "description": "8-word guess list (correct word + 7 category distractors) populated for spies, empty for normal players."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update server timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "hostId",
+        "roundNumber",
+        "isSpy",
+        "secretWord",
+        "spyOptions",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "RoundVault": {
+      "title": "RoundVault",
+      "description": "Host-owned round master vault storing authoritative word and spy UIDs for scoring & host migration.",
+      "type": "object",
+      "properties": {
+        "hostId": {
+          "type": "string",
+          "description": "Host UID who created this round vault."
+        },
+        "roundNumber": {
+          "type": "integer",
+          "description": "Round number."
+        },
+        "secretWord": {
+          "type": "string",
+          "description": "Authoritative secret word for the round."
+        },
+        "spyIds": {
+          "type": "array",
+          "description": "Authoritative list of spy UIDs for the round."
+        },
+        "spyOptions": {
+          "type": "array",
+          "description": "8-word guess list for the round."
+        },
+        "scored": {
+          "type": "boolean",
+          "description": "Idempotency flag preventing duplicate score calculation."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update server timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "hostId",
+        "roundNumber",
+        "secretWord",
+        "spyIds",
+        "spyOptions",
+        "scored",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "VoteBallot": {
+      "title": "VoteBallot",
+      "description": "Immutable per-round vote ballot cast by a player selecting suspected spies.",
+      "type": "object",
+      "properties": {
+        "voterId": {
+          "type": "string",
+          "description": "UID of the player casting the ballot."
+        },
+        "roundNumber": {
+          "type": "integer",
+          "description": "Round number of the vote."
+        },
+        "selectedSuspectIds": {
+          "type": "array",
+          "description": "Selected suspect UIDs matching the round spyCount."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Immutable submission server timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "voterId",
+        "roundNumber",
+        "selectedSuspectIds",
+        "createdAt"
+      ]
+    },
+    "SpyWordGuess": {
+      "title": "SpyWordGuess",
+      "description": "Immutable independent secret word guess submitted by a spy.",
+      "type": "object",
+      "properties": {
+        "spyId": {
+          "type": "string",
+          "description": "UID of the spy submitting the guess."
+        },
+        "roundNumber": {
+          "type": "integer",
+          "description": "Round number of the guess."
+        },
+        "guessedWord": {
+          "type": "string",
+          "description": "Chosen word from the 8 options."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Immutable submission server timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "spyId",
+        "roundNumber",
+        "guessedWord",
+        "createdAt"
+      ]
+    },
+    "VoiceSignal": {
+      "title": "VoiceSignal",
+      "description": "WebRTC SDP/ICE signaling packet scoped strictly between sender and recipient inside a room.",
+      "type": "object",
+      "properties": {
+        "senderId": {
+          "type": "string",
+          "description": "UID of the signaling peer."
+        },
+        "targetId": {
+          "type": "string",
+          "description": "UID of the intended receiving peer."
+        },
+        "roomCode": {
+          "type": "string",
+          "description": "Parent room code."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["OFFER", "ANSWER", "ICE", "PING"],
+          "description": "Signaling message type."
+        },
+        "payload": {
+          "type": "string",
+          "description": "SDP or ICE candidate payload."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Signal creation server timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "senderId",
+        "targetId",
+        "roomCode",
+        "type",
+        "payload",
+        "createdAt"
+      ]
+    },
+    "UserMatchStat": {
+      "title": "UserMatchStat",
+      "description": "Personal match history record stored under the authenticated user's profile.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner UID."
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["OFFLINE", "ONLINE"],
+          "description": "Match mode."
+        },
+        "won": {
+          "type": "boolean",
+          "description": "Whether the player won."
+        },
+        "score": {
+          "type": "integer",
+          "description": "Final score earned."
+        },
+        "playerCount": {
+          "type": "integer",
+          "description": "Number of players in the match."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Completion server timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "mode",
+        "won",
+        "score",
+        "playerCount",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomCode}": {
+      "schema": { "$ref": "#/entities/Room" },
+      "description": "Publicly joinable room document keyed by 6-char uppercase roomCode."
+    },
+    "/rooms/{roomCode}/players/{playerId}": {
+      "schema": { "$ref": "#/entities/RoomPlayer" },
+      "description": "Synchronized room members."
+    },
+    "/rooms/{roomCode}/secrets/{playerId}": {
+      "schema": { "$ref": "#/entities/PlayerSecret" },
+      "description": "Per-player secret role and word payload."
+    },
+    "/rooms/{roomCode}/vault/{roundId}": {
+      "schema": { "$ref": "#/entities/RoundVault" },
+      "description": "Authoritative round word and spies accessible only to current room host or after round ends."
+    },
+    "/rooms/{roomCode}/votes/{ballotId}": {
+      "schema": { "$ref": "#/entities/VoteBallot" },
+      "description": "Immutable round vote ballots."
+    },
+    "/rooms/{roomCode}/guesses/{guessId}": {
+      "schema": { "$ref": "#/entities/SpyWordGuess" },
+      "description": "Immutable independent spy word guesses."
+    },
+    "/rooms/{roomCode}/signals/{signalId}": {
+      "schema": { "$ref": "#/entities/VoiceSignal" },
+      "description": "Peer-to-peer WebRTC voice chat signaling messages."
+    },
+    "/users/{userId}/history/{statId}": {
+      "schema": { "$ref": "#/entities/UserMatchStat" },
+      "description": "Authenticated user's personal match statistics."
+    }
+  }
+}
